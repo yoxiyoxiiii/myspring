@@ -24,7 +24,7 @@ import java.util.Set;
  */
 public class MyDispatcherServlet extends HttpServlet {
 
-    private Map<String,Object> ioc = new HashMap<>();
+    private Map<String,Object> ioc = new HashMap<String,Object>();
 
     @Override
     public void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -44,10 +44,8 @@ public class MyDispatcherServlet extends HttpServlet {
     @Override
     public void init(ServletConfig servletConfig) throws ServletException {
         try {
-        //ServletContext 上下文
-        ServletContext servletContext = servletConfig.getServletContext();
         //加载配置文件
-        String contextConfig = servletContext.getInitParameter("contextConfigLocation");
+        String contextConfig = servletConfig.getInitParameter("contextConfigLocation");
 
         //读取配置文件
         InputStream resourceAsStream = this.getClass().getClassLoader().getResourceAsStream(contextConfig);
@@ -95,7 +93,7 @@ public class MyDispatcherServlet extends HttpServlet {
 
     private void scanBean(String scanPackage) {
         //classpath 下面加载
-        URL resource = this.getClass().getClassLoader().getResource(scanPackage);
+        URL resource = this.getClass().getClassLoader().getResource("/"+scanPackage.replaceAll("\\.","/"));
         //包下文件
         File file = new File(resource.getFile());
         File[] files = file.listFiles();
