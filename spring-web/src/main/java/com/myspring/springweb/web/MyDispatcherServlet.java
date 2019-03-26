@@ -2,6 +2,7 @@ package com.myspring.springweb.web;
 
 import com.myspring.springweb.annotations.MyController;
 import com.myspring.springweb.annotations.MyService;
+import com.myspring.springweb.annotations.RequestMapping;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletContext;
@@ -12,11 +13,14 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * DispatcherServlet
@@ -24,7 +28,7 @@ import java.util.Set;
  */
 public class MyDispatcherServlet extends HttpServlet {
 
-    private Map<String,Object> ioc = new HashMap<String,Object>();
+    private Map<String,Object> ioc = new ConcurrentHashMap<String,Object>();
 
     @Override
     public void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -33,11 +37,32 @@ public class MyDispatcherServlet extends HttpServlet {
 
     @Override
     public void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        doDispatch(req,resp);
+        try {
+            doDispatch(req,resp);
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
     }
 
-    private void doDispatch(HttpServletRequest req, HttpServletResponse resp) {
+    private void doDispatch(HttpServletRequest req, HttpServletResponse resp) throws IOException, InvocationTargetException, IllegalAccessException {
+        //获取到请求的地址
+        String requestURI = req.getRequestURI();
+        String contextPath = req.getContextPath();
+        requestURI = requestURI.replace(contextPath, "").replaceAll("/+", "/");
+        //如果请求的地址不在容器中返回 404
+        if(!this.ioc.containsKey(requestURI)){resp.getWriter().write("404 Not Found!!");return;}
 
+        //根据url 获取对应处理请求的方法
+        Method method = (Method)this.ioc.get(requestURI);
+
+        //得到class name
+        String clazzName = method.getDeclaringClass().getName();
+        Object targetClazz = this.ioc.get(clazzName);
+        String reqParameter = req.getParameter("hello");
+        //方法调用, new Object[]{req,resp,reqParameter} 方法参数列表
+        method.invoke(targetClazz,new Object[]{req,resp,reqParameter});
     }
 
 
@@ -67,6 +92,26 @@ public class MyDispatcherServlet extends HttpServlet {
                     Object newInstance = aClass.newInstance();
                     //放入Map
                     ioc.put(className, newInstance);
+                    //如果对象被 @RequestMapping 标注，得到请求的url
+                    String baseUrl = "";
+                    if (aClass.isAnnotationPresent(RequestMapping.class)){
+                        RequestMapping requestMapping = aClass.getAnnotation(RequestMapping.class);
+                        //得到baseUrl
+                        baseUrl = requestMapping.value();
+
+                    }
+                    //遍历对象中的所有方法，看是否被 @RequestMapping 标注，如是 得到最后的请求地址
+                    Method[] methods = aClass.getMethods();
+                    for (Method method : methods) {
+                        if (!method.isAnnotationPresent(RequestMapping.class)) {
+                            continue;
+                        }
+                        RequestMapping requestMapping = method.getAnnotation(RequestMapping.class);
+                        baseUrl = baseUrl +"/" + requestMapping.value();
+                        ioc.put(baseUrl.replaceAll("/+","/"), method);
+                    }
+
+
 
                     //@MyService 标注的类
                 }else if (aClass.isAnnotationPresent(MyService.class)) {
@@ -92,24 +137,13 @@ public class MyDispatcherServlet extends HttpServlet {
     }
 
     private void scanBean(String scanPackage) {
-        //classpath 下面加载
-        URL resource = this.getClass().getClassLoader().getResource("/"+scanPackage.replaceAll("\\.","/"));
-        //包下文件
-        File file = new File(resource.getFile());
-        File[] files = file.listFiles();
-
-        for (File f: files) {
-            //第一层是jar 包
-            if (f.isDirectory()) {
-                scanBean(scanPackage + "."+ f.getName());
-            }else {
-                if (f.getName().endsWith(".class")) {
-                    continue;
-                }
-                //得到className，存入map集合
-                String className = scanPackage + "." + f.getName().replace(".class","");
-
-                ioc.put(className,null);
+        URL url = this.getClass().getClassLoader().getResource("/" + scanPackage.replaceAll("\\.","/"));
+        File classDir = new File(url.getFile());
+        for (File file : classDir.listFiles()) {
+            if(file.isDirectory()){ scanBean(scanPackage + "." +  file.getName());}else {
+                if(!file.getName().endsWith(".class")){continue;}
+                String clazzName = (scanPackage + "." + file.getName().replace(".class",""));
+                ioc.put(clazzName,"");
             }
         }
     }

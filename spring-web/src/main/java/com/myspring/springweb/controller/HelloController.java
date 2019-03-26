@@ -12,7 +12,7 @@ import java.io.IOException;
 public class HelloController {
 
 
-    @RequestMapping
+    @RequestMapping(value = "/hello")
     public void hello(HttpServletRequest request ,
                         HttpServletResponse response,
                         @RequestParam(name = "hello") String hello) throws IOException {
