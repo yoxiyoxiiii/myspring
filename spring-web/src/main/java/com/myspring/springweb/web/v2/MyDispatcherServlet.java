@@ -32,7 +32,7 @@ public class MyDispatcherServlet extends HttpServlet {
 
     @Override
     public void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-       doPost(req, resp);
+        doPost(req, resp);
     }
 
     @Override
@@ -45,15 +45,16 @@ public class MyDispatcherServlet extends HttpServlet {
      * 获取到请求的url
      * 取出 handlerMapping 的method
      * 反射调用
+     *
      * @param req
      * @param resp
      */
     private void doDispatch(HttpServletRequest req, HttpServletResponse resp) {
         String requestURI = req.getRequestURI();
         String contextPath = req.getContextPath();
-        requestURI = requestURI.replaceAll(contextPath,"").replaceAll("/+","/");
+        requestURI = requestURI.replaceAll(contextPath, "").replaceAll("/+", "/");
 
-        if(!this.handlerMapping.containsKey(requestURI)){
+        if (!this.handlerMapping.containsKey(requestURI)) {
             try {
                 resp.getWriter().write("404 Not Found!!");
             } catch (IOException e) {
@@ -65,15 +66,15 @@ public class MyDispatcherServlet extends HttpServlet {
         Method method = this.handlerMapping.get(requestURI);
 
         //请求参数
-        Map<String,String[]> params = req.getParameterMap();
+        Map<String, String[]> params = req.getParameterMap();
 
         //获取该方法的声明参数列表
         Class<?>[] parameterTypesMethod = method.getParameterTypes();
 
         //保存赋值参数的位置
-        Object [] paramValues = new Object[parameterTypesMethod.length];
+        Object[] paramValues = new Object[parameterTypesMethod.length];
 
-        for (int i = 0;i< parameterTypesMethod.length; i++) {
+        for (int i = 0; i < parameterTypesMethod.length; i++) {
             Class<?> parameterType = parameterTypesMethod[i];
             //当前位置 是 HttpServletRequest 类型参数
             if (HttpServletRequest.class == parameterType) {
@@ -88,30 +89,22 @@ public class MyDispatcherServlet extends HttpServlet {
             //其他参数设置
             if (String.class == parameterType) {
                 Annotation[][] parameterAnnotations = method.getParameterAnnotations();
-                for (int  j = 0 ; j<parameterAnnotations.length ; j++) {
-                    for(Annotation a : parameterAnnotations[j]){
-                        if(a instanceof RequestParam){
+                for (int j = 0; j < parameterAnnotations.length; j++) {
+                    for (Annotation a : parameterAnnotations[j]) {
+                        if (a instanceof RequestParam) {
                             String paramName = ((RequestParam) a).value();
-                            if(!"".equals(paramName.trim())){
+                            if (!"".equals(paramName.trim())) {
                                 for (Map.Entry<String, String[]> param : params.entrySet()) {
                                     String value = Arrays.toString(param.getValue())
-                                .replaceAll("\\[|\\]", "")
-                                .replaceAll("\\s", ",");
-                                 paramValues[i] = value;
+                                            .replaceAll("\\[|\\]", "")
+                                            .replaceAll("\\s", ",");
+                                    paramValues[i] = value;
                                 }
                             }
                         }
                     }
 
                 }
-//                if (params.containsKey(requestParam.value())) {
-//                    for (Map.Entry<String, String[]> param : params.entrySet()) {
-//                        String value = Arrays.toString(param.getValue())
-//                                .replaceAll("\\[|\\]", "")
-//                                .replaceAll("\\s", ",");
-//                        paramValues[i] = value;
-//                    }
-//                }
             }
         }
 
@@ -133,6 +126,7 @@ public class MyDispatcherServlet extends HttpServlet {
 
     /**
      * 初始化方法
+     *
      * @param config
      * @throws ServletException
      */
@@ -176,7 +170,7 @@ public class MyDispatcherServlet extends HttpServlet {
                     if (methodAnnotationPresent) {
                         baseUrl = baseUrl + "/" + method.getAnnotation(RequestMapping.class).value();
                         // url 规范，设置url-> method 映射
-                        handlerMapping.put(baseUrl.replaceAll("/+","/"), method);
+                        handlerMapping.put(baseUrl.replaceAll("/+", "/"), method);
                     }
 
                 }
@@ -193,14 +187,14 @@ public class MyDispatcherServlet extends HttpServlet {
             Object clazz = entry.getValue();
             //得到 对象所有的属性
             Field[] declaredFields = clazz.getClass().getDeclaredFields();
-            for (Field field : declaredFields)  {
+            for (Field field : declaredFields) {
                 boolean annotationPresent = field.isAnnotationPresent(MyAutowired.class);
                 // 只为 MyAutowired 标注的 属性设置依赖注入
                 if (annotationPresent) {
                     MyAutowired myAutowired = field.getAnnotation(MyAutowired.class);
                     String beanName = myAutowired.value().trim();
                     if ("".equals(beanName)) {
-                        beanName= field.getType().getSimpleName();
+                        beanName = field.getType().getSimpleName();
                     }
                     Object instance = ioc.get(toLowerFirstCase(beanName));
                     field.setAccessible(true);
@@ -227,7 +221,7 @@ public class MyDispatcherServlet extends HttpServlet {
                 if (aClass.isAnnotationPresent(MyController.class)) {
                     String simpleName = aClass.getSimpleName();
                     //类名首字母小写 HelloController -> helloController
-                    String beanName =  toLowerFirstCase(simpleName);
+                    String beanName = toLowerFirstCase(simpleName);
                     Object instance = aClass.newInstance();
                     ioc.put(beanName, instance);
                 }
@@ -252,14 +246,13 @@ public class MyDispatcherServlet extends HttpServlet {
     }
 
     private String toLowerFirstCase(String simpleName) {
-        char [] chars = simpleName.toCharArray();
+        char[] chars = simpleName.toCharArray();
         chars[0] += 32;
-        return  String.valueOf(chars);
+        return String.valueOf(chars);
     }
 
 
     /**
-     *
      * @param scanPackage
      */
     private void doScanner(String scanPackage) {
@@ -278,7 +271,9 @@ public class MyDispatcherServlet extends HttpServlet {
                 //如果当前是文件夹 ，递归 进入
                 doScanner(scanPackage + "." + file.getName());
             }
-            if (!file.getName().endsWith(".class")) {continue;}
+            if (!file.getName().endsWith(".class")) {
+                continue;
+            }
             String replace = file.getName().replace(".class", "");
             //得到类的全面
             String classFullName = scanPackage + "." + replace;
@@ -290,9 +285,10 @@ public class MyDispatcherServlet extends HttpServlet {
 
     /**
      * 加载配置信息
+     *
      * @param contextConfigLocation
      */
-    private void loadConfig(String contextConfigLocation)  {
+    private void loadConfig(String contextConfigLocation) {
         InputStream resourceAsStream = this.getClass().getClassLoader().getResourceAsStream(contextConfigLocation);
         try {
             contextConfig.load(resourceAsStream);
