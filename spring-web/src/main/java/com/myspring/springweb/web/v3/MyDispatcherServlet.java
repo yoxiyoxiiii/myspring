@@ -294,6 +294,7 @@ public class MyDispatcherServlet extends HttpServlet {
             for (int i = 0; i < parameterAnnotations.length; i++) {
                 for (Annotation a : parameterAnnotations[i]) {
                     if (a instanceof RequestParam) {
+                        //参数名称
                         String paramName = ((RequestParam) a).value();
                         if (!"".equals(paramName.trim())) {
                             paramIndexMapping.put(paramName, i);
