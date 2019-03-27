@@ -1,5 +1,6 @@
 package com.myspring.springweb.web;
 
+import com.myspring.springweb.annotations.MyAutowired;
 import com.myspring.springweb.annotations.MyController;
 import com.myspring.springweb.annotations.MyService;
 import com.myspring.springweb.annotations.RequestMapping;
@@ -13,13 +14,11 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -46,6 +45,14 @@ public class MyDispatcherServlet extends HttpServlet {
         }
     }
 
+    /**
+     * 请求分发 ，反射调用，响应请求
+     * @param req
+     * @param resp
+     * @throws IOException
+     * @throws InvocationTargetException
+     * @throws IllegalAccessException
+     */
     private void doDispatch(HttpServletRequest req, HttpServletResponse resp) throws IOException, InvocationTargetException, IllegalAccessException {
         //获取到请求的地址
         String requestURI = req.getRequestURI();
@@ -111,8 +118,6 @@ public class MyDispatcherServlet extends HttpServlet {
                         ioc.put(baseUrl.replaceAll("/+","/"), method);
                     }
 
-
-
                     //@MyService 标注的类
                 }else if (aClass.isAnnotationPresent(MyService.class)) {
 
@@ -122,6 +127,31 @@ public class MyDispatcherServlet extends HttpServlet {
                         beanName = aClass.getName();
                     }
                     ioc.put(beanName, aClass.newInstance());
+                }
+            }
+
+            //为Controller 注入Service
+            Collection<Object> values = ioc.values();
+            for (Object object : values) {
+                Class<?> clazz = object.getClass();
+                if (clazz.isAnnotationPresent(MyController.class)) {
+                    //获取所有属性
+                    Field[] declaredFields = clazz.getDeclaredFields();
+                    for (Field field : declaredFields) {
+                        if(!field.isAnnotationPresent(MyAutowired.class)){continue; }
+                        MyAutowired myAutowired = field.getAnnotation(MyAutowired.class);
+                        String beanName = myAutowired.value();
+                        if ("".equals(beanName)) {
+                            beanName = field.getType().getName();
+                            field.setAccessible(true);
+                            //设置注入的对象
+                            Object target = ioc.get(clazz.getName());
+                            //得到需要注入的对象
+                            Object value = ioc.get(beanName);
+                            //给 target 对象注入 value 依赖
+                            field.set(target,value);
+                        }
+                    }
                 }
             }
         } catch (IOException e) {
