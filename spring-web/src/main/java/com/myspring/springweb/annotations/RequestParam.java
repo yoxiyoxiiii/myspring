@@ -10,6 +10,6 @@ public @interface RequestParam {
      * 参数名称
      * @return
      */
-    String name() default "";
+    String value() default "";
 
 }

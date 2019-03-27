@@ -20,7 +20,7 @@ public class HelloController {
     @RequestMapping(value = "/hello")
     public void hello(HttpServletRequest request ,
                         HttpServletResponse response,
-                        @RequestParam(name = "hello") String hello) throws IOException {
+                        @RequestParam(value = "hello") String hello) throws IOException {
         String s = helloService.hello();
         System.out.println(s);
         response.getWriter().write(hello + " :" + s);

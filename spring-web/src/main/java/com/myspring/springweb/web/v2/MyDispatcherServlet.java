@@ -1,9 +1,6 @@
 package com.myspring.springweb.web.v2;
 
-import com.myspring.springweb.annotations.MyAutowired;
-import com.myspring.springweb.annotations.MyController;
-import com.myspring.springweb.annotations.MyService;
-import com.myspring.springweb.annotations.RequestMapping;
+import com.myspring.springweb.annotations.*;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -13,14 +10,12 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 
 public class MyDispatcherServlet extends HttpServlet {
 
@@ -71,15 +66,63 @@ public class MyDispatcherServlet extends HttpServlet {
 
         //请求参数
         Map<String,String[]> params = req.getParameterMap();
+
+        //获取该方法的声明参数列表
+        Class<?>[] parameterTypesMethod = method.getParameterTypes();
+
+        //保存赋值参数的位置
+        Object [] paramValues = new Object[parameterTypesMethod.length];
+
+        for (int i = 0;i< parameterTypesMethod.length; i++) {
+            Class<?> parameterType = parameterTypesMethod[i];
+            //当前位置 是 HttpServletRequest 类型参数
+            if (HttpServletRequest.class == parameterType) {
+                paramValues[i] = req;
+                continue;
+            }
+            // 当前位置是 HttpServletResponse 类型参数
+            if (HttpServletResponse.class == parameterType) {
+                paramValues[i] = resp;
+                continue;
+            }
+            //其他参数设置
+            if (String.class == parameterType) {
+                Annotation[][] parameterAnnotations = method.getParameterAnnotations();
+                for (int  j = 0 ; j<parameterAnnotations.length ; j++) {
+                    for(Annotation a : parameterAnnotations[j]){
+                        if(a instanceof RequestParam){
+                            String paramName = ((RequestParam) a).value();
+                            if(!"".equals(paramName.trim())){
+                                for (Map.Entry<String, String[]> param : params.entrySet()) {
+                                    String value = Arrays.toString(param.getValue())
+                                .replaceAll("\\[|\\]", "")
+                                .replaceAll("\\s", ",");
+                                 paramValues[i] = value;
+                                }
+                            }
+                        }
+                    }
+
+                }
+//                if (params.containsKey(requestParam.value())) {
+//                    for (Map.Entry<String, String[]> param : params.entrySet()) {
+//                        String value = Arrays.toString(param.getValue())
+//                                .replaceAll("\\[|\\]", "")
+//                                .replaceAll("\\s", ",");
+//                        paramValues[i] = value;
+//                    }
+//                }
+            }
+        }
+
         //得到该方法所在的类
         String simpleName = method.getDeclaringClass().getSimpleName();
 
         String clazz = toLowerFirstCase(simpleName);
 
         Object instance = ioc.get(clazz);
-        String[] hellos = params.get("hello");
         try {
-            method.invoke(instance, new Object[]{req, resp, hellos[0]});
+            method.invoke(instance, paramValues);
         } catch (IllegalAccessException e) {
             e.printStackTrace();
         } catch (InvocationTargetException e) {
