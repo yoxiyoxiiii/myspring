@@ -6,9 +6,9 @@
 	version="2.4">
 	<servlet>
 		<servlet-name>mvc</servlet-name>
-		<servlet-class>com.myspring.springweb.web.MyDispatcherServlet</servlet-class>
+		<servlet-class>com.myspring.springweb.web.v2.MyDispatcherServlet</servlet-class>
 		<init-param>
-			<param-name>contextConfigLocation</param-name>
+			<param-name>contextConfigLocation</param-name>v
 			<param-value>application.properties</param-value>
 		</init-param>
 

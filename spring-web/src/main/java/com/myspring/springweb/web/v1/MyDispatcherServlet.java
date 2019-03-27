@@ -1,4 +1,4 @@
-package com.myspring.springweb.web;
+package com.myspring.springweb.web.v1;
 
 import com.myspring.springweb.annotations.MyAutowired;
 import com.myspring.springweb.annotations.MyController;
@@ -62,7 +62,7 @@ public class MyDispatcherServlet extends HttpServlet {
         if(!this.ioc.containsKey(requestURI)){resp.getWriter().write("404 Not Found!!");return;}
 
         //根据url 获取对应处理请求的方法
-        Method method = (Method)this.ioc.get(requestURI);
+            Method method = (Method)this.ioc.get(requestURI);
 
         //得到class name
         String clazzName = method.getDeclaringClass().getName();
@@ -167,8 +167,9 @@ public class MyDispatcherServlet extends HttpServlet {
     }
 
     private void scanBean(String scanPackage) {
-        URL url = this.getClass().getClassLoader().getResource("/" + scanPackage.replaceAll("\\.","/"));
-        File classDir = new File(url.getFile());
+        URL url = this.getClass().getClassLoader().getResource(scanPackage.replaceAll("\\.","/"));
+        String urlFile = url.getFile();
+        File classDir = new File(urlFile);
         for (File file : classDir.listFiles()) {
             if(file.isDirectory()){ scanBean(scanPackage + "." +  file.getName());}else {
                 if(!file.getName().endsWith(".class")){continue;}
